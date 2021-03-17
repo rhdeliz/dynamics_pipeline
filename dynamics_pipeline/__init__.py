@@ -1,1 +1,0 @@
-print("Initializing dynamics_pipeline")
