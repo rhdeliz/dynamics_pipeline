@@ -1,3 +1,5 @@
+import ray
+
 # Function to translate IDs into results
 def ids_to_vals(ids):
     if isinstance(ids, ray.ObjectID):

@@ -3,8 +3,8 @@ Converts ND2 file to multi-page TIFF
 '''
 
 import os, shutil, ray, time
-import conversion.channels as channels
-from pims_nd2 import ND2_Reader
+import conversion.parameters as parameters
+from pims_nd2 import ND2_Reader # Install as pims-nd2
 
 @ray.remote
 def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
@@ -30,7 +30,7 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
     try:
         # Get channel names
         n_channels = img.metadata['plane_count'] - 1
-        channel_names = channels.get_channel_names(img, n_channels)
+        channel_names = parameters.get_channel_names(img, n_channels)
         channel_range = range(0, img.metadata['plane_count'])
         channel_range = list(channel_range)
         # Get frame count
@@ -86,7 +86,7 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
     try:
         # Split channels
         for channel in channel_range:
-            channels.save_channel_img(img, images_list, n_frames, channel, channel_names, image_x, save_path, tiff_compression_level)
+            parameters.save_channel_img(img, images_list, n_frames, channel, channel_names, image_x, save_path, tiff_compression_level)
     except:
         print('Cannot split channels')
 
@@ -97,7 +97,7 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
         shutil.move(image_x_path, move_path)
         # Close image
         img.close()
-        time.sleep(3)
+        time.sleep(5)
     except:
         print('Cannot move processed nd2 file')
 

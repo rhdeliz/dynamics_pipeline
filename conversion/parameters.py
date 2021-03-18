@@ -1,6 +1,4 @@
 import os, tifffile
-import numpy as np
-from PIL import Image
 
 # Function to get channel names
 def get_channel_names(img, planes):
@@ -17,20 +15,17 @@ def get_channel_names(img, planes):
     return channels
 
 # Function to extract images for a channel
-def get_original_img(img, frames, channel):
+# May not need PIL?
+def get_original_img(img, n_frames, channel):
     try:
-        t = 0
+        frames = range(0, n_frames)
         all_orig = []
-        while t <= frames:
+        for t in frames:
             orig = img.get_frame_2D(c=channel, x=0, y=0, t=t)
-            orig = np.array(orig)
-            orig = Image.fromarray(orig)
-            all_orig.append(np.array(orig))
-            t += 1
+            all_orig.append(orig)
     except:
         print('original error')
-    return np.array(all_orig)
-
+    return all_orig
 
 # Function to save splitted channel
 def save_channel_img(img, images_list, n_frames, channel, channel_names, image_x, save_path, tiff_compression_level):
@@ -40,5 +35,21 @@ def save_channel_img(img, images_list, n_frames, channel, channel_names, image_x
     protein_x = images_list[channel_names[channel]][image_x]
     out_name = protein_x + '.tif'
     out_path = os.path.join(save_path, out_name)
+
+    img_channel[0].dtype
+
     tifffile.imsave(out_path, img_channel, compress=tiff_compression_level)
+    test = cv2.imread(out_path)
+    test.dtype
     return out_path
+
+    '''
+    try:
+        t = 0
+        all_orig = []
+        while t <= frames:
+            orig = img.get_frame_2D(c=channel, x=0, y=0, t=t)
+            # orig = Image.fromarray(orig)
+            all_orig.append(orig)
+            t += 1
+    '''

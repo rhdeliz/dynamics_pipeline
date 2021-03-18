@@ -1,6 +1,5 @@
 import os
-import pandas as pd
-# Needs xlrd, openpyxl
+import pandas as pd # Needs xlrd, openpyxl
 
 # Import folder list
 def dark_frames_parameters(parameters_table):
@@ -98,6 +97,11 @@ def constants(parameters_table):
     real_median = real_median.to_string(index=False)
     real_median = real_median.lower()
     real_median = real_median == 'yes'
+    # Real median or approximate
+    median_filter_size = constants_list.loc[constants_list['parameter'] == 'median_filter_size']['value']
+    median_filter_size = median_filter_size.to_string(index=False)
+    median_filter_size = int(median_filter_size)
+
     # Trackmate parameters
     trackmate_blob_diameter = constants_list.loc[constants_list['parameter'] == 'trackmate_blob_diameter']['value']
     trackmate_blob_diameter = float(trackmate_blob_diameter)
@@ -113,4 +117,4 @@ def constants(parameters_table):
     trackmate_frame_gap = constants_list.loc[constants_list['parameter'] == 'trackmate_frame_gap']['value']
     trackmate_frame_gap = float(trackmate_frame_gap)
 
-    return median_blur_size, tiff_compression_level, real_median, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap
+    return median_blur_size, tiff_compression_level, real_median, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap
