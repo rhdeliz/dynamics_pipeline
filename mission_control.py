@@ -1,4 +1,3 @@
-# Test
 import ray
 import settings.parallel
 import settings.variables as variables
@@ -17,9 +16,10 @@ pip install ray
 # Parameters table
 parameters_table = '/Users/u_deliz/Desktop/NewPipeline/Input/parameters.xlsx'
 dark_frames_list = variables.dark_frames_parameters(parameters_table)
+flat_fields_list = variables.flat_fields_parameters(parameters_table)
 images_list, n_images = variables.images_parameters(parameters_table)
 to_tiff_path, background_remove_path, segmentation_path, tracking_path, output_path = variables.processing_paths(parameters_table)
-median_blur_size, tiff_compression_level, real_median, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap = variables.constants(parameters_table)
+median_blur_size, tiff_compression_level, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap = variables.constants(parameters_table)
 
 # Convert nd2 to tiff
 ray.init()

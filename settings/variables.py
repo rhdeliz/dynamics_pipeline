@@ -24,6 +24,29 @@ def dark_frames_parameters(parameters_table):
 
     return dark_frames_list
 
+# Import folder list
+def flat_fields_parameters(parameters_table):
+    # Path
+    directory_list = pd.read_excel(parameters_table, 'directories')
+    # Dark frames
+    flat_fields_path = directory_list.loc[directory_list['contains'] == 'flat_fields']['path']
+    flat_fields_path = flat_fields_path[0]
+    # Import data frame list
+    flat_fields_list = pd.read_excel(parameters_table, 'flat_fields')
+    # Make paths from dark-frame images
+    n_ff_images = len(flat_fields_list)
+    n_ff_images = range(0, n_ff_images)
+    n_ff_images = list(n_ff_images)
+    # Combine directory with image name
+    ff_image_path = []
+    for f in n_ff_images:
+        path = os.path.join(flat_fields_path, flat_fields_list['image'][f])
+        ff_image_path.append(path)
+    # Add loop result to list
+    flat_fields_list['path'] = ff_image_path
+
+    return flat_fields_list
+
 # Import images list
 def images_parameters(parameters_table):
     # Path
@@ -93,11 +116,6 @@ def constants(parameters_table):
     tiff_compression_level = tiff_compression_level.to_string(index=False)
     tiff_compression_level = int(tiff_compression_level)
     # Real median or approximate
-    real_median = constants_list.loc[constants_list['parameter'] == 'real_median']['value']
-    real_median = real_median.to_string(index=False)
-    real_median = real_median.lower()
-    real_median = real_median == 'yes'
-    # Real median or approximate
     median_filter_size = constants_list.loc[constants_list['parameter'] == 'median_filter_size']['value']
     median_filter_size = median_filter_size.to_string(index=False)
     median_filter_size = int(median_filter_size)
@@ -117,4 +135,4 @@ def constants(parameters_table):
     trackmate_frame_gap = constants_list.loc[constants_list['parameter'] == 'trackmate_frame_gap']['value']
     trackmate_frame_gap = float(trackmate_frame_gap)
 
-    return median_blur_size, tiff_compression_level, real_median, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap
+    return median_blur_size, tiff_compression_level, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap
