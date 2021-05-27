@@ -30,6 +30,7 @@ def flat_fields_parameters(parameters_table):
     directory_list = pd.read_excel(parameters_table, 'directories')
     # Dark frames
     flat_fields_path = directory_list.loc[directory_list['contains'] == 'flat_fields']['path']
+    flat_fields_path = flat_fields_path.reset_index()['path']
     flat_fields_path = flat_fields_path[0]
     # Import data frame list
     flat_fields_list = pd.read_excel(parameters_table, 'flat_fields')
@@ -44,6 +45,14 @@ def flat_fields_parameters(parameters_table):
         ff_image_path.append(path)
     # Add loop result to list
     flat_fields_list['path'] = ff_image_path
+    # Get dates
+    ff_date = []
+    for f in n_ff_images:
+        image = flat_fields_list['image'][f]
+        date = image[:8]
+        ff_date.append(date)
+    # Add loop result to list
+    flat_fields_list['date'] = ff_date
 
     return flat_fields_list
 
@@ -108,22 +117,22 @@ def processing_paths(parameters_table):
 # Constants
 def constants(parameters_table):
     constants_list = pd.read_excel(parameters_table, 'constants')
-    # Median blur size to subtract from dark-frame removed image
-    median_blur_size = constants_list.loc[constants_list['parameter'] == 'median_pixel_size']['value']
-    median_blur_size = median_blur_size.to_string(index=False)
     # TIFF Compression
     tiff_compression_level = constants_list.loc[constants_list['parameter'] == 'tiff_compression_level']['value']
     tiff_compression_level = tiff_compression_level.to_string(index=False)
     tiff_compression_level = int(tiff_compression_level)
-    # Real median or approximate
-    median_filter_size = constants_list.loc[constants_list['parameter'] == 'median_filter_size']['value']
-    median_filter_size = median_filter_size.to_string(index=False)
-    median_filter_size = int(median_filter_size)
+
+    # Median parameters
+    # Cell size for median subtraction
+    cell_size = constants_list.loc[constants_list['parameter'] == 'cell_size']['value']
+    cell_size = cell_size.to_string(index=False)
+    cell_size = int(cell_size)
+    # Puncta size for median filter and trackmate
+    puncta_size = constants_list.loc[constants_list['parameter'] == 'puncta_size']['value']
+    puncta_size = puncta_size.to_string(index=False)
+    puncta_size = int(puncta_size)
 
     # Trackmate parameters
-    trackmate_blob_diameter = constants_list.loc[constants_list['parameter'] == 'trackmate_blob_diameter']['value']
-    trackmate_blob_diameter = float(trackmate_blob_diameter)
-
     trackmate_max_link_distance = constants_list.loc[constants_list['parameter'] == 'trackmate_max_link_distance'][
         'value']
     trackmate_max_link_distance = float(trackmate_max_link_distance)
@@ -135,4 +144,4 @@ def constants(parameters_table):
     trackmate_frame_gap = constants_list.loc[constants_list['parameter'] == 'trackmate_frame_gap']['value']
     trackmate_frame_gap = float(trackmate_frame_gap)
 
-    return median_blur_size, tiff_compression_level, median_filter_size, trackmate_blob_diameter, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap
+    return tiff_compression_level,cell_size, puncta_size, trackmate_max_link_distance, trackmate_max_gap_distance, trackmate_frame_gap

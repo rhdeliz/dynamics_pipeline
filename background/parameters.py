@@ -44,17 +44,30 @@ def conversion_list(image_x, to_tiff_path, images_list):
         # Add paths to table
         select_metadata['df_rm_save_path'] = save_paths
 
-        # Make MedRm save names
+        # Make Cell MedRm save names
         save_paths = []
         for channel in n_channels:
             # Get image name
             protein_img = select_metadata['value1'][channel]
-            protein_img = protein_img + '_median_removed.tif'
+            protein_img = protein_img + '_cell_median_removed.tif'
             # Add path
             path = os.path.join(img_path, protein_img)
             save_paths.append(path)
         # Add paths to table
-        select_metadata['med_rm_save_path'] = save_paths
+        select_metadata['cell_med_rm_save_path'] = save_paths
+
+        # Make Puncta MedRm save names
+        save_paths = []
+        for channel in n_channels:
+            # Get image name
+            protein_img = select_metadata['value1'][channel]
+            protein_img = protein_img + '_puncta_median_removed.tif'
+            # Add path
+            path = os.path.join(img_path, protein_img)
+            save_paths.append(path)
+        # Add paths to table
+        select_metadata['puncta_med_rm_save_path'] = save_paths
+
     except:
         print("Cannot complete conversion_list")
     return select_metadata

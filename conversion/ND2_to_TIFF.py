@@ -4,7 +4,8 @@ Converts ND2 file to multi-page TIFF
 
 import os, shutil, ray, time
 import conversion.parameters as parameters
-from pims_nd2 import ND2_Reader # Install as pims-nd2
+from pims_nd2 import ND2_Reader  # Install as pims-nd2
+
 
 @ray.remote
 def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
@@ -22,7 +23,6 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
         print('Image parameters error')
 
     try:
-        # Open image
         img = ND2_Reader(image_x_path)
     except:
         print('Cannot open ND2 image')
@@ -56,20 +56,25 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
         y_size = str(y_size)
         exposures = []
         for channel in channel_names:
-            separator = '\r\n Name: ' + channel
-            exposure = img.metadata_text.split(separator)[1]
-            exposure = exposure.split('\r\n  Exposure: ')[1]
-            exposure = exposure.split('\r\n')[0]
-            exposure = exposure.split(' ')
-            protein_x = images_list[channel][image_x]
-            # Join
-            text = 'channel,'+ protein_x + ',' + channel +',exposure,'+exposure[0]+','+exposure[1]
-            exposures.append(text)
+            try:
+                separator = '\r\n Name: ' + channel
+                exposure = img.metadata_text.split(separator)[1]
+                exposure = exposure.split('\r\n  Exposure: ')[1]
+                exposure = exposure.split('\r\n')[0]
+                exposure = exposure.split(' ')
+                protein_x = images_list[channel][image_x]
+                # Join
+                text = 'channel,' + protein_x + ',' + channel + ',exposure,' + exposure[0] + ',' + exposure[1]
+
+                exposures.append(text)
+            except:
+                print('Channel error')
+
         exposures = '\n'.join(exposures)
-        select_metadata =\
-            'parameter1,value1,units1,parameter2,value2,units2\n'+\
-            'frame_rate,' + frame_rate + ',s\n'+\
-            'pixel_size,' + pixel_size + ',um\n'+ \
+        select_metadata = \
+            'parameter1,value1,units1,parameter2,value2,units2\n' + \
+            'frame_rate,' + frame_rate + ',s\n' + \
+            'pixel_size,' + pixel_size + ',um\n' + \
             'x_size,' + x_size + ',px\n' + \
             'y_size,' + y_size + ',px,\n' + \
             exposures
@@ -83,12 +88,13 @@ def nd2_to_tiff(image_x, images_list, to_tiff_path, tiff_compression_level):
     except:
         print('Metadata error')
 
-    try:
-        # Split channels
-        for channel in channel_range:
-            parameters.save_channel_img(img, images_list, n_frames, channel, channel_names, image_x, save_path, tiff_compression_level)
-    except:
-        print('Cannot split channels')
+    # Split channels
+    for channel in channel_range:
+        try:
+            parameters.save_channel_img(img, images_list, n_frames, channel, channel_names, image_x, save_path,
+                                        tiff_compression_level)
+        except:
+            print('Cannot split channels')
 
     try:
         # Move ND2 file once finished

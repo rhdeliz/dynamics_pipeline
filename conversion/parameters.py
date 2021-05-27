@@ -35,21 +35,5 @@ def save_channel_img(img, images_list, n_frames, channel, channel_names, image_x
     protein_x = images_list[channel_names[channel]][image_x]
     out_name = protein_x + '.tif'
     out_path = os.path.join(save_path, out_name)
-
-    img_channel[0].dtype
-
-    tifffile.imsave(out_path, img_channel, compress=tiff_compression_level)
-    test = cv2.imread(out_path)
-    test.dtype
+    tifffile.imsave(out_path, img_channel, bigtiff=True, compress=tiff_compression_level, dtype=img_channel[0].dtype)
     return out_path
-
-    '''
-    try:
-        t = 0
-        all_orig = []
-        while t <= frames:
-            orig = img.get_frame_2D(c=channel, x=0, y=0, t=t)
-            # orig = Image.fromarray(orig)
-            all_orig.append(orig)
-            t += 1
-    '''

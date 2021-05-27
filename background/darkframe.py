@@ -7,7 +7,7 @@ import background.parameters as parameters
 
 # opencv-python
 @ray.remote
-def remove(protein_image_x, background_remove_image_list, dark_frames_list, tiff_compression_level):
+def remove_frame(protein_image_x, background_remove_image_list, dark_frames_list, tiff_compression_level):
     try:
         # Get protein info
         original_image_path = background_remove_image_list['img_path'][protein_image_x]
@@ -32,7 +32,7 @@ def remove(protein_image_x, background_remove_image_list, dark_frames_list, tiff
             df_rm = cv.subtract(df_rm, dark_frame_image)
             dark_frame_removed_image.append(df_rm)
         # Save image
-        tifffile.imsave(save_image_path, dark_frame_removed_image, compress=tiff_compression_level)
+        tifffile.imsave(save_image_path, dark_frame_removed_image, bigtiff=True, compress=tiff_compression_level, dtype=dark_frame_removed_image[0].dtype)
         time.sleep(5)
     except:
         print("Cannot complete remove")
