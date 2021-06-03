@@ -1,48 +1,30 @@
 import os
 import pandas as pd
-import re
 
 
-def segmentation_list(background_remove_path, segmentation_path, images_list):
-    segmentation_input_path = []
-    segmentation_output_path = []
-
-    n_images = len(images_list)
-    n_images = range(0, n_images)
-    n_images = list(n_images)
-
+def segmentation_list(images_list, file_ending, background_remove_path):
+    n_images = range(0, len(images_list))
+    # Add to_tiff_path
+    segmentation_image_list = []
     for image_x in n_images:
-        # Input
-        image_x_input_name = images_list['segment_with'][image_x] + '_cell_median_removed.tif'
-        image_x_input_path = os.path.join(background_remove_path, images_list['cohort'][image_x],
-                                          images_list['image_name'][image_x], image_x_input_name)
-        segmentation_input_path.append(image_x_input_path)
+        segmentation_image = images_list['segment_with'][image_x] + file_ending
 
-        # Output path
-        image_x_output_path = os.path.join(segmentation_path, images_list['cohort'][image_x],
-                                           images_list['image_name'][image_x])
-        segmentation_output_path.append(image_x_output_path)
-        # Delete temporary variables
-        del image_x_input_path, image_x_output_path
-    # Make it a table
-    segmentation_image_list = \
-        {'input_path': segmentation_input_path,
-         'output_path': segmentation_output_path}
+        if not images_list['cohort'][image_x] == 'Calibrations':
+            segmentation_image = os.path.join(background_remove_path, images_list['relative_path'][image_x],
+                                              segmentation_image)
+            if os.path.exists(segmentation_image):
+                segmentation_image_list.append(segmentation_image)
 
-    # Convert it to dataframe
-    segmentation_image_list = pd.DataFrame(segmentation_image_list)
-    # Delete temporary variables
-    del segmentation_input_path, segmentation_output_path
+    return segmentation_image_list
 
-    # Take out calibration images
-    n_segmentation_images = images_list.image_name.str.contains('calibration', flags=re.IGNORECASE)
-    n_segmentation_images = n_segmentation_images.index[n_segmentation_images == False].tolist()
 
-    return segmentation_image_list, n_segmentation_images
+
+
+
 
 def segment_images_list(segmentation_input_path):
     # Get metadata in folder
-    metadata_path = os.path.join(segmentation_input_path, 'select_metadata.csv')
+    metadata_path = os.path.join(segmentation_input_path, 'sewlect_metadata.csv')
     select_metadata = pd.read_csv(metadata_path)
     keep_rows = select_metadata.parameter1 == 'channel'
     keep_rows = select_metadata.index[keep_rows == True].tolist()

@@ -1,21 +1,21 @@
 import os, tifffile
 
-# Function to get channel names
-def get_channel_names(img, planes):
-    try:
-        channels = []
-        i = 0
-        while i <= planes:
-            plane_x = 'plane_' + str(i)
-            name = img.metadata[plane_x]['name']
-            channels.append(name)
-            i += 1
-    except:
-        print('get_channel_names error')
-    return channels
+
+# Channel names
+def get_channels_table(images_list):
+    # Get columns with channel and protein names
+    protein_names_cols = [col for col in images_list.columns if ' protein_name' in col]
+    # Channels
+    channels_table = images_list[protein_names_cols]
+    channels_table.columns = [col.replace(' protein_name', '') for col in channels_table.columns]
+    # Add image name
+    channels_table = channels_table.assign(
+        image = list(images_list['image']),
+        date =  list(images_list['date'])
+    )
+    return channels_table
 
 # Function to extract images for a channel
-# May not need PIL?
 def get_original_img(img, n_frames, channel):
     try:
         frames = range(0, n_frames)
@@ -37,3 +37,4 @@ def save_channel_img(img, images_list, n_frames, channel, channel_names, image_x
     out_path = os.path.join(save_path, out_name)
     tifffile.imsave(out_path, img_channel, bigtiff=True, compress=tiff_compression_level, dtype=img_channel[0].dtype)
     return out_path
+
