@@ -63,7 +63,7 @@ def processing_paths(directories_table):
         flat_fields_path = flat_fields_path.to_string(index=False)
 
         # ImageJ/FIJI path
-        imagej = directory_list.loc[directory_list['contains'] == 'imagej']['path']
+        imagej = directory_list.loc[directory_list['contains'] == 'ImageJ']['path']
         imagej = imagej.to_string(index=False)
 
         return input_path, to_tiff_path, background_remove_path, segmentation_path, tracking_path, \
@@ -90,10 +90,6 @@ def dark_frame_parameters(dark_frames_table, dark_frames_path):
     try:
         # Import dark frames table
         dark_frames_list = pd.read_csv(dark_frames_table)
-        # Make paths from dark-frame images
-        n_df_images = len(dark_frames_list)
-        n_df_images = range(0, n_df_images)
-        n_df_images = list(n_df_images)
         # Combine directory with image name
         dark_frames_list = dark_frames_list.assign(
             path=lambda dataframe: dataframe['image'].map(lambda image: os.path.join(dark_frames_path, image)),
@@ -124,8 +120,7 @@ def flat_field_parameters(flat_fields_table, flat_fields_path):
         # Import data frame list
         flat_fields_list = pd.read_csv(flat_fields_table)
         # Make paths from dark-frame images
-        n_ff_images = len(flat_fields_list)
-        n_ff_images = range(0, n_ff_images)
+        n_ff_images = range(0, len(flat_fields_list))
         n_ff_images = list(n_ff_images)
 
         # Combine directory with image name
@@ -157,8 +152,7 @@ def image_parameters(images_table):
         # Path
         images_list = pd.read_csv(images_table)
         # Make paths from dark-frame images
-        n_images = len(images_list)
-        n_images = range(0, n_images)
+        n_images = range(0, len(images_list))
         n_images = list(n_images)
 
         # Combine directory with image name

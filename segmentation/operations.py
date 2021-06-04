@@ -2,6 +2,7 @@ import math, ray, tifffile, os, time
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 @ray.remote
@@ -120,59 +121,118 @@ def segment(segment_image, cell_diameter, tiff_compression_level):
     return segmentation_output_path
 
 @ray.remote
-def make_substacks(image_x_path, segmentation_image_x_path, puncta_diameter, tiff_compression_level):
+def make_substacks(substack_segmentation_image, substack_image, puncta_diameter, tiff_compression_level):
     # Import images
-    input_image = tifffile.imread(image_x_path)
-    if os.path.exists(segmentation_image_x_path):
-        segmentation_image = tifffile.imread(segmentation_image_x_path)
+    input_image = tifffile.imread(substack_image)
+    if os.path.exists(substack_segmentation_image):
+        segmentation_image = tifffile.imread(substack_segmentation_image)
+        # Get cell count
+        n_cells = segmentation_image.max()
+        n_cells = range(1, int(n_cells))
+
+        # Get frame count
+        frames = input_image.shape[0]
+        frames = range(0, frames)
+
+        # Get cells larger than puncta area
+        area_results = []
+        for cell_x in n_cells:
+            result = sum(sum(segmentation_image == cell_x))
+            result = result > puncta_diameter ** 2
+            area_results.append(result)
+        area_results = np.where(area_results)[0] + 1
+
+        for cell_x in area_results:
+            # Get cell masks
+            cell_x_mask = segmentation_image == cell_x
+
+            i, j = np.where(cell_x_mask)
+            indexes = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
+
+            # Run in parallel
+            cropped_img = []
+            for frame_x in frames:
+                cell_x_img = input_image[frame_x]
+                cutout_img = cell_x_img * cell_x_mask
+                cropped_frame_img = cutout_img[tuple(indexes)]
+                cropped_img.append(cropped_frame_img)
+            # Save image
+            save_path = os.path.dirname(substack_image)
+            cell_path = np.where(area_results == cell_x)[0][0] + 1
+            cell_path = 'Cell_' + cell_path.__str__()
+            cell_path = os.path.join(save_path, cell_path)
+            # Create cell path if it doesn't exist
+            if not os.path.exists(cell_path):
+                os.mkdir(cell_path)
+            # Save name
+            save_name = os.path.basename(substack_image)
+            save_path = os.path.join(cell_path, save_name)
+            # Save image
+            tifffile.imsave(save_path, cropped_img, bigtiff=True, compress=tiff_compression_level,
+                            dtype=cropped_img[0].dtype)
     else:
-        segmentation_image = np.zeros((input_image.shape[1], input_image.shape[2]))+1
-
-    # Get cell count
-    n_cells = segmentation_image.max()
-    n_cells = range(1, n_cells)
-
-    # Get frame count
-    frames = input_image.shape[0]
-    frames = range(0, frames)
-
-    # Get cells larger than puncta area
-    area_results = []
-    for cell_x in n_cells:
-        result = sum(sum(segmentation_image == cell_x))
-        result = result > puncta_diameter ** 2
-        area_results.append(result)
-    area_results = np.where(area_results)[0] + 1
-
-    for cell_x in area_results:
-        # Get cell masks
-        cell_x_mask = segmentation_image == cell_x
-
-        i, j = np.where(cell_x_mask)
-        indexes = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
-
-        # Run in parallel
-        cropped_img = []
-        for frame_x in frames:
-            cell_x_img = input_image[frame_x]
-            cutout_img = cell_x_img * cell_x_mask
-            cropped_frame_img = cutout_img[tuple(indexes)]
-            cropped_img.append(cropped_frame_img)
         # Save image
-        save_path = os.path.dirname(image_x_path)
-        cell_path = np.where(area_results == cell_x)[0][0] + 1
-        cell_path = 'Cell_' + cell_path.__str__()
-        cell_path = os.path.join(save_path, cell_path)
+        save_path = os.path.dirname(substack_image)
+        cell_path = os.path.join(save_path, 'Cell_1')
         # Create cell path if it doesn't exist
         if not os.path.exists(cell_path):
             os.mkdir(cell_path)
         # Save name
-        save_name = os.path.basename(image_x_path)
+        save_name = os.path.basename(substack_image)
         save_path = os.path.join(cell_path, save_name)
         # Save image
-        tifffile.imsave(save_path, cropped_img, bigtiff=True, compress=tiff_compression_level,
-                        dtype=cropped_img[0].dtype)
-        time.sleep(5)
-
+        tifffile.imsave(save_path, input_image, bigtiff=True, compress=tiff_compression_level,
+                        dtype=input_image[0].dtype)
     time.sleep(5)
-    ray.shutdown()
+
+@ray.remote
+def make_area_list(substack_segmentation_image, puncta_diameter):
+    # Save table
+    image_path = os.path.dirname(substack_segmentation_image)
+    save_path = os.path.join(image_path, 'cell_area.csv')
+
+    if os.path.exists(substack_segmentation_image):
+        segmentation_image = tifffile.imread(substack_segmentation_image)
+        # Get cell count
+        n_cells = segmentation_image.max()
+        n_cells = range(1, int(n_cells))
+
+        # Get cells larger than puncta area
+        area_results = []
+        for cell_x in n_cells:
+            # Get area
+            area = sum(sum(segmentation_image == cell_x))
+            if area > puncta_diameter ** 2:
+                area_results.append(area)
+
+        # Get cell folder names
+        cell_names = range(1, len(area_results)+1)
+        cell_names = list(cell_names)
+        new_cell_names = []
+        for cell_name in cell_names:
+            cell_name = 'Cell_' + str(cell_name)
+            new_cell_names.append(cell_name)
+        # Get new cell count
+        n_cells = range(0, len(new_cell_names))
+        with open(save_path, 'w') as f:
+            f.write('cell,area\n')
+            for cell in n_cells:
+                f.write(new_cell_names[cell] + ',' + str(area_results[cell]) + '\n')
+    else:
+        metadata = os.path.join(image_path, 'metadata.csv')
+        metadata = pd.read_csv(metadata)
+        # Get height
+        height = metadata['parameter'] == 'height'
+        height = metadata[height]['value']
+        height = int(height)
+        # Get width
+        width = metadata['parameter'] == 'width'
+        width = metadata[width]['value']
+        width = int(width)
+        area = str(height * width)
+        # Save table
+        with open(save_path, 'w') as f:
+            f.write('cell, area\n')
+            f.write('Cell_1,'+area)
+        n_cells = 1
+    return max(n_cells)

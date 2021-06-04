@@ -63,7 +63,7 @@ def nd2_to_tiff(image_x_path, image_x_cohort, image_x_channels, to_tiff_path, ti
         # Save metadata to csv
         img_metadata = flatten_dictionary(img.metadata)
         with open(os.path.join(save_path, 'metadata.csv'), 'w') as f:
-            f.write('parameter, value\n')
+            f.write('parameter,value,value2,value3\n')
             for key in img_metadata.keys():
                 f.write('%s,%s\n' % (key, img_metadata[key]))
 

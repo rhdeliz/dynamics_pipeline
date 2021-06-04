@@ -1,129 +1,115 @@
 import os
 import pandas as pd
 
-def get_images_to_track(segmentation_path, images_list, image_x):
-    try:
-        # Get image path
-        substacked_image = os.path.join(segmentation_path, images_list['cohort'][image_x],
-                                        images_list['image_name'][image_x])
-        # Get proteins in image
-        metadata_table = os.path.join(substacked_image, 'select_metadata.csv')
-        metadata_table = pd.read_csv(metadata_table)
-        keep_rows = metadata_table.parameter1 == 'channel'
-        keep_rows = keep_rows.index[keep_rows == True].tolist()
-        metadata_table = metadata_table.iloc[keep_rows]
-        substacked_proteins = metadata_table['value1']
-        substacked_proteins = list(substacked_proteins)
-
-        # Get max cell number
-        cell_folders = os.listdir(substacked_image)
-        cell_folders = [x for x in cell_folders if 'Cell_' in x]
-        # Make path of cell protein image
-        cell_paths = []
-        for cell in cell_folders:
-            cell_path = os.path.join(substacked_image, cell)
-            cell_paths.append(cell_path)
-
-        cell_paths = cell_paths * len(substacked_proteins)
-        proteins = substacked_proteins * len(cell_folders)
-
-        cell_paths.sort()
-        image_paths = []
-        for x in range(0, len(cell_paths)):
-            image_name = proteins[x] + '_puncta_median_removed.tif'
-            image_path = os.path.join(cell_paths[x], image_name)
-            image_paths.append(image_path)
-        substacked_image = os.path.join(segmentation_path, images_list['cohort'][image_x],
-                                        images_list['image_name'][image_x])
-        # Get proteins in image
-        metadata_table = os.path.join(substacked_image, 'select_metadata.csv')
-        metadata_table = pd.read_csv(metadata_table)
-        keep_rows = metadata_table.parameter1 == 'channel'
-        keep_rows = keep_rows.index[keep_rows == True].tolist()
-        metadata_table = metadata_table.iloc[keep_rows]
-        substacked_proteins = metadata_table['value1']
-        substacked_proteins = list(substacked_proteins)
-        # Get protein channel name
-        substacked_channels = metadata_table['units1']
-        substacked_channels = list(substacked_channels)
-
-        # Get max cell number
-        cell_folders = os.listdir(substacked_image)
-        cell_folders = [x for x in cell_folders if 'Cell_' in x]
-        # Make path of cell protein image
-        cell_paths = []
-        for cell in cell_folders:
-            cell_path = os.path.join(substacked_image, cell)
-            cell_paths.append(cell_path)
-
-        cell_paths = cell_paths * len(substacked_proteins)
-        proteins = substacked_proteins * len(cell_folders)
-        channels = substacked_channels * len(cell_folders)
-
-        cell_paths.sort()
-        image_paths = []
-        xml_paths = []
-        for x in range(0, len(cell_paths)):
-            image_name = proteins[x] + '_puncta_median_removed.tif'
-            image_path = os.path.join(cell_paths[x], image_name)
-            image_paths.append(image_path)
-
-            xml_name = proteins[x] + '.xml'
-            xml_path = os.path.join(cell_paths[x], xml_name)
-            xml_paths.append(xml_path)
+file_ending = ['_puncta_median_removed.tif']
 
 
-
-        return cell_paths, image_paths, xml_paths, proteins, channels
-    except:
-        print("Cannot get list of cells for tracking")
-        cell_paths = []
-        image_paths = []
-        proteins = []
-        channels = []
-        xml_paths = []
-        return cell_paths, image_paths, xml_paths, proteins, channels
-
-def tracking_list(segmentation_path, images_list):
-    # Get number of images
-    n_images = range(len(images_list))
-    n_images = list(n_images)
-
-    # Get parameters
-    cell_paths = []
-    image_paths = []
-    xml_paths = []
-    proteins = []
-    channels = []
+def tracking_list(images_list, segmentation_path, input_path):
+    n_images = range(0, len(images_list))
+    all_channels_metadata = []
     for image_x in n_images:
-        try:
-            cell_path, image_path, xml_path, protein, channel = get_images_to_track(segmentation_path, images_list, image_x)
-            cell_paths = cell_paths + cell_path
-            image_paths = image_paths + image_path
-            xml_paths = xml_paths + xml_path
-            proteins = proteins + protein
-            channels = channels + channel
-        except:
-            print('')
+        # Get paths
+        relative_path = images_list['relative_path'][image_x]
+        image_path = os.path.join(segmentation_path, relative_path)
+        image_name = images_list['image'][image_x]
+        cohort_name = images_list['cohort'][image_x]
 
-    # Tracking list
+        # Get image parameters
+        ligand = images_list['ligand'][image_x]
+        trackmate_max_link_distance = images_list['trackmate_max_link_distance'][image_x]
 
-    images_to_track = pd.DataFrame([protein_paths, proteins, channels])
-    images_to_track = images_to_track.transpose()
-    images_to_track.columns = ['protein_image_path', 'protein', 'channel']
+        # Get tables to merge
+        select_images_list = images_list['image'] == image_name
+        select_images_list = list(select_images_list)
+        select_images_list = images_list.loc[select_images_list]
+        # Get table paths
+        channels_csv_path = os.path.join(image_path, 'channels_metadata.csv')
+        area_csv_path = os.path.join(image_path, 'cell_area.csv')
+        metadata_csv_path = os.path.join(image_path, 'metadata.csv')
+        if os.path.exists(channels_csv_path) and os.path.exists(area_csv_path) and os.path.exists(metadata_csv_path):
+            # Get tables
+            metadata = pd.read_csv(metadata_csv_path)
+            width = metadata.loc[metadata['parameter'] == 'width']['value']
+            width = int(width)
+            height = metadata.loc[metadata['parameter'] == 'height']['value']
+            height = int(height)
+            calibration_um = metadata.loc[metadata['parameter'] == 'calibration_um']['value']
+            calibration_um = float(calibration_um)
+            time_start = metadata.loc[metadata['parameter'] == 'time_start']['value']
+            time_start = time_start.to_string(index=False)
+            objective = metadata.loc[metadata['parameter'] == 'objective']['value']
+            objective = objective.to_string(index=False)
+            frame_rate = metadata.loc[metadata['parameter'] == 'frame_rate']['value']
+            frame_rate = float(frame_rate)
 
-    return images_to_track
+            # Get channel metadata
+            channel_metadata = pd.read_csv(channels_csv_path)
+            cells = pd.read_csv(area_csv_path)
+            image_channels_metadata = []
+            # Get channel parameters
+            for channel_x in range(0, len(channel_metadata)):
+                # Channel metadata
+                channel_name = channel_metadata['channel'][channel_x]
+                protein_name = channel_metadata['protein_name'][channel_x]
+                select_channel_metadata = channel_metadata.loc[[channel_x]]
 
-def imagej_path(parameters_table):
-    # Path
-    directory_list = pd.read_excel(parameters_table, 'directories')
-    # Dark frames
-    flat_fields_path = directory_list.loc[directory_list['contains'] == 'ImageJ']['path']
-    flat_fields_path = flat_fields_path.reset_index()['path']
-    flat_fields_path = flat_fields_path[0]
+                # Get trackmate parameters
+                trackmate_threhsold = channel_name + ' trackmate_threshold'
+                trackmate_threhsold = select_images_list[trackmate_threhsold]
+                trackmate_threhsold = float(trackmate_threhsold)
+                select_channel_metadata['trackmate_threhsold'] = trackmate_threhsold
 
-    return flat_fields_path
+                trackmate_frame_gap = channel_name + ' trackmate_frame_gap'
+                trackmate_frame_gap = select_images_list[trackmate_frame_gap]
+                trackmate_frame_gap = int(trackmate_frame_gap)
+                select_channel_metadata['trackmate_frame_gap'] = trackmate_frame_gap
 
-def tracking_parameters():
+                # Get protein image paths
+                protein_relative_paths = []
+                cell_areas = []
+                for cell_x in range(0, len(cells)):
+                    cell_name = cells['cell'][cell_x]
+
+                    protein_relative_path = os.path.join(relative_path, cell_name, protein_name)
+                    protein_relative_paths.append(protein_relative_path)
+
+                    cell_area = cells['area'][cell_x]
+                    cell_areas.append(cell_area)
+
+                # Expand rows and incorporate cell data
+                select_channel_metadata = select_channel_metadata.loc[select_channel_metadata.index.repeat(len(cells))]
+                select_channel_metadata['protein_relative_path'] = protein_relative_path
+                select_channel_metadata['area'] = cell_areas
+                select_channel_metadata['ligand'] = ligand
+                select_channel_metadata['cohort'] = cohort_name
+                select_channel_metadata['trackmate_max_link_distance'] = trackmate_max_link_distance
+                select_channel_metadata['width'] = width
+                select_channel_metadata['height'] = height
+                select_channel_metadata['calibration_um'] = calibration_um
+                select_channel_metadata['time_start'] = time_start
+                select_channel_metadata['objective'] = objective
+                select_channel_metadata['frame_rate'] = frame_rate
+
+                all_channels_metadata.append(select_channel_metadata)
+                image_channels_metadata.append(select_channel_metadata)
+
+            # Save
+            image_channels_metadata = pd.concat(image_channels_metadata)
+            csv_name = os.path.join(image_path, 'summmary.csv')
+            image_channels_metadata.to_csv(csv_name, index = False)
+    # Concatenate
+    all_channels_metadata = pd.concat(all_channels_metadata)
+    csv_name = os.path.join(input_path, 'summmary.csv')
+    all_channels_metadata.to_csv(csv_name, index=False)
+
+    return all_channels_metadata
+
+def tracking_parameters(all_channels_metadata, file_ending, segmentation_path):
+    all_channels_metadata
+
+    for row in range(0, len(all_channels_metadata)):
+        relative_path = all_channels_metadata['protein_relative_path'][row]
+        image_path = os.path.join()
+
 
 

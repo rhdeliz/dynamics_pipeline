@@ -41,8 +41,7 @@ def background_remove_list(images_list, dark_frames_list, to_tiff_path):
     background_remove_image_list = background_remove_image_list.reset_index()
     background_remove_image_list= background_remove_image_list.drop(columns=['index'])
     # Select dark-frame image
-    n_protein_images = len(background_remove_image_list)
-    n_protein_images = range(0, n_protein_images)
+    n_protein_images = range(0, len(background_remove_image_list))
     dark_frame_images = []
     for protein_image_x in n_protein_images:
         # Only include images that exist
@@ -66,8 +65,7 @@ def background_remove_list(images_list, dark_frames_list, to_tiff_path):
 
 def median_remove_list(background_remove_image_list):
     # Image list
-    n_protein_images = len(background_remove_image_list)
-    n_protein_images = range(0, n_protein_images)
+    n_protein_images = range(0, len(background_remove_image_list))
     df_rm_images = []
     for protein_image_x in n_protein_images:
         image_path = background_remove_image_list['image_path'][protein_image_x]

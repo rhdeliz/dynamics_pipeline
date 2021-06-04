@@ -93,6 +93,7 @@ if not os.path.exists(constants_table):
 # Get constant parameters
 tiff_compression_level, cell_diameter, puncta_diameter = variables.constants(constants_table)
 
+
 # Convert nd2 to tiff
 import conversion.parameters
 import conversion.operations
@@ -184,10 +185,9 @@ for protein_image_x in n_protein_images:
 # Segment images
 import segmentation.parameters
 import segmentation.operations
-import os
 # Get parameters
 file_ending = '_cell_median_removed.tif'
-segmentation_image_list = segmentation.parameters.segmentation_list(images_list, background_remove_path, segmentation_path)
+segmentation_image_list = segmentation.parameters.segmentation_list(images_list, file_ending, background_remove_path)
 # Run in parallel
 ray.init()
 result_ids = []
@@ -196,22 +196,64 @@ n_segmentation_images = range(0, n_segmentation_images)
 for image_x in n_segmentation_images:
     segment_image = segmentation_image_list[image_x]
     # Run segmentation
-    result_id = segmentation.operations.segment(segment_image, cell_diameter, tiff_compression_level)
+    result_id = segmentation.operations.segment.remote(segment_image, cell_diameter, tiff_compression_level)
     result_ids.append(result_id)
 results = settings.parallel.ids_to_vals(result_ids)
 print(results)
 ray.shutdown()
 # Make substacks
-import pandas as pd
-images_to_segment = []
-for image_x in n_images:
-    # Get image parameters
-    img_parameters = segmentation_image_list.loc[image_x]
-    segmentation_input_path = img_parameters['input_path']
-    segmentation_input_path = os.path.dirname(segmentation_input_path)
-    # Get image parameters
-    temp_images_to_segment = segmentation.parameters.segment_images_list(segmentation_input_path)
-    images_to_segment.append(temp_images_to_segment)
+file_ending = ['_cell_median_removed.tif', '_puncta_median_removed.tif']
+substack_segmentation_images, substack_image_list = segmentation.parameters.substack_list(images_list, background_remove_path, file_ending)
+# Run in parallel
+ray.init()
+result_ids = []
+n_segmentation_images  = range(0, len(substack_image_list))
+for image_x in n_segmentation_images:
+    # Get image and segmentation file
+    substack_segmentation_image = substack_segmentation_images[image_x]
+    substack_image = substack_image_list[image_x]
+    # Segment
+    result_id = segmentation.operations.make_substacks.remote(substack_segmentation_image, substack_image, puncta_diameter, tiff_compression_level)
+    n_cells = segmentation.operations.make_area_list.remote(substack_segmentation_image, puncta_diameter)
+    result_ids.append(result_id)
+results = settings.parallel.ids_to_vals(result_ids)
+print(results)
+ray.shutdown()
+# Move files to segmentation folder
+import shutil, time
+for protein_image_x in n_segmentation_images:
+    image_path = substack_segmentation_images[protein_image_x]
+    image_path = os.path.dirname(image_path)
+    area_table = os.path.join(image_path, 'cell_area.csv')
+    # Get image and cohort names
+    try:
+        if os.path.exists(area_table):
+            old_cohort_path = os.path.dirname(image_path)
+            image_name = os.path.basename(image_path)
+            cohort_name = os.path.basename(old_cohort_path)
+            # Make it the new path
+            if not os.path.exists(segmentation_path):
+                os.mkdir(segmentation_path)
+            new_cohort_path = os.path.join(segmentation_path, cohort_name)
+            if not os.path.exists(new_cohort_path):
+                os.mkdir(new_cohort_path)
+            shutil.move(image_path, new_cohort_path)
+        time.sleep(1)
+        if len(list(os.walk(old_cohort_path))[1:]) == 0:
+            shutil.rmtree(old_cohort_path)
+    except:
+        print('Segmentation did not run completely for: ' + image_path)
+
+
+
+# Run tracking
+import track.parameters
+# Get images list
+all_channels_metadata = track.parameters.tracking_list(images_list, segmentation_path, input_path)
+file_ending = '_puncta_median_removed.tif'
+all_channels_metadata = track.parameters.tracking_parameters(all_channels_metadata, file_ending, segmentation_path)
+
+imagej
 # Combine list and make it clean
 images_to_segment = pd.concat(images_to_segment)
 images_to_segment = images_to_segment.reset_index()
