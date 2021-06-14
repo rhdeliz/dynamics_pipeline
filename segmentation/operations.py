@@ -143,33 +143,37 @@ def make_substacks(substack_segmentation_image, substack_image, puncta_diameter,
         area_results = np.where(area_results)[0] + 1
 
         for cell_x in area_results:
-            # Get cell masks
-            cell_x_mask = segmentation_image == cell_x
+            try:
+                # Get cell masks
+                cell_x_mask = segmentation_image == cell_x
 
-            i, j = np.where(cell_x_mask)
-            indexes = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
+                # Crop cell
+                i, j = np.where(cell_x_mask)
+                indexes = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
 
-            # Run in parallel
-            cropped_img = []
-            for frame_x in frames:
-                cell_x_img = input_image[frame_x]
-                cutout_img = cell_x_img * cell_x_mask
-                cropped_frame_img = cutout_img[tuple(indexes)]
-                cropped_img.append(cropped_frame_img)
-            # Save image
-            save_path = os.path.dirname(substack_image)
-            cell_path = np.where(area_results == cell_x)[0][0] + 1
-            cell_path = 'Cell_' + cell_path.__str__()
-            cell_path = os.path.join(save_path, cell_path)
-            # Create cell path if it doesn't exist
-            if not os.path.exists(cell_path):
-                os.mkdir(cell_path)
-            # Save name
-            save_name = os.path.basename(substack_image)
-            save_path = os.path.join(cell_path, save_name)
-            # Save image
-            tifffile.imsave(save_path, cropped_img, bigtiff=True, compress=tiff_compression_level,
-                            dtype=cropped_img[0].dtype)
+                # Run in parallel
+                cropped_img = []
+                for frame_x in frames:
+                    cell_x_img = input_image[frame_x]
+                    cutout_img = cell_x_img * cell_x_mask
+                    cropped_frame_img = cutout_img[tuple(indexes)]
+                    cropped_img.append(cropped_frame_img)
+                # Save image
+                save_path = os.path.dirname(substack_image)
+                cell_path = np.where(area_results == cell_x)[0][0] + 1
+                cell_path = 'Cell_' + cell_path.__str__()
+                cell_path = os.path.join(save_path, cell_path)
+                # Create cell path if it doesn't exist
+                if not os.path.exists(cell_path):
+                    os.mkdir(cell_path)
+                # Save name
+                save_name = os.path.basename(substack_image)
+                save_path = os.path.join(cell_path, save_name)
+                # Save image
+                tifffile.imsave(save_path, cropped_img, bigtiff=False, compress=tiff_compression_level,
+                                dtype=cropped_img[0].dtype)
+            except:
+                print('Error making substack: ' + substack_image + 'Cell_' + cell_x)
     else:
         # Save image
         save_path = os.path.dirname(substack_image)
@@ -181,7 +185,7 @@ def make_substacks(substack_segmentation_image, substack_image, puncta_diameter,
         save_name = os.path.basename(substack_image)
         save_path = os.path.join(cell_path, save_name)
         # Save image
-        tifffile.imsave(save_path, input_image, bigtiff=True, compress=tiff_compression_level,
+        tifffile.imsave(save_path, input_image, bigtiff=False, compress=tiff_compression_level,
                         dtype=input_image[0].dtype)
     time.sleep(5)
 
@@ -196,14 +200,32 @@ def make_area_list(substack_segmentation_image, puncta_diameter):
         # Get cell count
         n_cells = segmentation_image.max()
         n_cells = range(1, int(n_cells))
+        # Get number of rows
+        n_rows = range(0, segmentation_image.shape[0])
 
         # Get cells larger than puncta area
         area_results = []
+        min_x_results = []
+        min_y_results = []
         for cell_x in n_cells:
             # Get area
             area = sum(sum(segmentation_image == cell_x))
             if area > puncta_diameter ** 2:
                 area_results.append(area)
+                # Get x,y coordintes of cell
+                min_x = []
+                min_y = []
+                cell_x_mask = segmentation_image == cell_x
+                for row in n_rows:
+                    index = np.argmax(cell_x_mask[row] == True)
+                    if not index == 0:
+                        min_x.append(index)
+                        min_y.append(row)
+                # Get minima
+                min_x = min(min_x) + 1
+                min_x_results.append(min_x)
+                min_y = min(min_y) + 1
+                min_y_results.append(min_y)
 
         # Get cell folder names
         cell_names = range(1, len(area_results)+1)
@@ -215,9 +237,9 @@ def make_area_list(substack_segmentation_image, puncta_diameter):
         # Get new cell count
         n_cells = range(0, len(new_cell_names))
         with open(save_path, 'w') as f:
-            f.write('cell,area\n')
+            f.write('cell,area,position_x,position_y\n')
             for cell in n_cells:
-                f.write(new_cell_names[cell] + ',' + str(area_results[cell]) + '\n')
+                f.write(new_cell_names[cell] + ',' + str(area_results[cell]) + ',' + str(min_x_results[cell]) + ',' + str(min_y_results[cell]) + '\n')
     else:
         metadata = os.path.join(image_path, 'metadata.csv')
         metadata = pd.read_csv(metadata)
@@ -232,7 +254,5 @@ def make_area_list(substack_segmentation_image, puncta_diameter):
         area = str(height * width)
         # Save table
         with open(save_path, 'w') as f:
-            f.write('cell, area\n')
-            f.write('Cell_1,'+area)
-        n_cells = 1
-    return max(n_cells)
+            f.write('cell,area,position_x,position_y\n')
+            f.write('Cell_1,'+ area + ',1,1')

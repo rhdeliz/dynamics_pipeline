@@ -1,8 +1,6 @@
 import os
 import pandas as pd
 
-file_ending = ['_puncta_median_removed.tif']
-
 
 def tracking_list(images_list, segmentation_path, input_path):
     n_images = range(0, len(images_list))
@@ -64,9 +62,14 @@ def tracking_list(images_list, segmentation_path, input_path):
                 trackmate_frame_gap = int(trackmate_frame_gap)
                 select_channel_metadata['trackmate_frame_gap'] = trackmate_frame_gap
 
+                trackmate_gap_link_distance = trackmate_max_link_distance
+                select_channel_metadata['trackmate_gap_link_distance'] = trackmate_gap_link_distance
+
                 # Get protein image paths
                 protein_relative_paths = []
                 cell_areas = []
+                position_x_list = []
+                position_y_list = []
                 for cell_x in range(0, len(cells)):
                     cell_name = cells['cell'][cell_x]
 
@@ -76,10 +79,19 @@ def tracking_list(images_list, segmentation_path, input_path):
                     cell_area = cells['area'][cell_x]
                     cell_areas.append(cell_area)
 
+                    position_x = cells['position_x'][cell_x]
+                    position_x_list.append(position_x)
+
+                    position_y = cells['position_y'][cell_x]
+                    position_y_list.append(position_y)
+
+
                 # Expand rows and incorporate cell data
                 select_channel_metadata = select_channel_metadata.loc[select_channel_metadata.index.repeat(len(cells))]
-                select_channel_metadata['protein_relative_path'] = protein_relative_path
+                select_channel_metadata['protein_relative_path'] = protein_relative_paths
                 select_channel_metadata['area'] = cell_areas
+                select_channel_metadata['position_x'] = position_x_list
+                select_channel_metadata['position_y'] = position_y_list
                 select_channel_metadata['ligand'] = ligand
                 select_channel_metadata['cohort'] = cohort_name
                 select_channel_metadata['trackmate_max_link_distance'] = trackmate_max_link_distance
@@ -99,17 +111,42 @@ def tracking_list(images_list, segmentation_path, input_path):
             image_channels_metadata.to_csv(csv_name, index = False)
     # Concatenate
     all_channels_metadata = pd.concat(all_channels_metadata)
-    csv_name = os.path.join(input_path, 'summmary.csv')
+    all_channels_metadata = all_channels_metadata.reset_index()
+    all_channels_metadata= all_channels_metadata.drop(columns=['index'])
+    csv_name = os.path.join(input_path, 'summary.csv')
     all_channels_metadata.to_csv(csv_name, index=False)
 
     return all_channels_metadata
 
 def tracking_parameters(all_channels_metadata, file_ending, segmentation_path):
-    all_channels_metadata
+    n_trackings = range(0, len(all_channels_metadata))
 
-    for row in range(0, len(all_channels_metadata)):
+    protein_paths = []
+    image_paths = []
+    trackmate_threhsolds = []
+    trackmate_frame_gaps = []
+    trackmate_max_link_distances = []
+    trackmate_gap_link_distances = []
+
+    for row in n_trackings:
         relative_path = all_channels_metadata['protein_relative_path'][row]
-        image_path = os.path.join()
 
+        protein_path = os.path.join(segmentation_path, relative_path)
+        protein_paths.append(protein_path)
 
+        image_path = protein_path + file_ending
+        image_paths.append(image_path)
 
+        trackmate_threhsold = all_channels_metadata['trackmate_threhsold'][row]
+        trackmate_threhsolds.append(trackmate_threhsold)
+
+        trackmate_frame_gap = all_channels_metadata['trackmate_frame_gap'][row]
+        trackmate_frame_gaps.append(trackmate_frame_gap)
+
+        trackmate_max_link_distance = all_channels_metadata['trackmate_max_link_distance'][row]
+        trackmate_max_link_distances.append(trackmate_max_link_distance)
+
+        trackmate_gap_link_distance = all_channels_metadata['trackmate_gap_link_distance'][row]
+        trackmate_gap_link_distances.append(trackmate_gap_link_distance)
+
+    return n_trackings, image_paths, protein_paths, trackmate_threhsolds, trackmate_frame_gaps, trackmate_max_link_distances, trackmate_gap_link_distances

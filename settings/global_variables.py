@@ -70,8 +70,8 @@ def processing_paths(directories_table):
                output_path, dark_frames_path, flat_fields_path, imagej
     except:
         # Get file path
-        sample_path = os.path.dirname(directories_table_path)
-        sample_table = 'sample ' + os.path.basename(directories_table_path)
+        sample_path = os.path.dirname(directories_table)
+        sample_table = 'sample ' + os.path.basename(directories_table)
         sample_directories_table = os.path.join(sample_path, sample_table)
         print('Input not accepted. Sample will be at ' + sample_directories_table)
         # Create table
@@ -163,9 +163,14 @@ def image_parameters(images_table):
         # Relative path
         images_list = images_list.assign(
             relative_path=images_list.apply(lambda dataframe: os.path.join(dataframe['cohort'], dataframe['image']), axis=1),
-            date=lambda dataframe: dataframe['date'].map(lambda date: datetime.datetime.strptime(date, '%Y%m%d'))
-
         )
+        try:
+            # Standardize date
+            images_list = images_list.assign(
+                date=lambda dataframe: dataframe['date'].map(lambda date: datetime.datetime.strptime(date, '%Y%m%d'))
+            )
+        except:
+            print('Incorrect date')
         return images_list, n_images
     except:
         # Get file path
