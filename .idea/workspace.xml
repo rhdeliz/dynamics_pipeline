@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4761121b-3d84-4c50-bbe7-9d113065bea7" name="Default Changelist" comment="Ligand incorported">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ligand/get_density.R" beforeDir="false" afterPath="$PROJECT_DIR$/ligand/get_density.R" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ligand/operations.py" beforeDir="false" afterPath="$PROJECT_DIR$/ligand/operations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ligand/run_trackmate.ijm" beforeDir="false" afterPath="$PROJECT_DIR$/ligand/run_trackmate.ijm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mission_control.py" beforeDir="false" afterPath="$PROJECT_DIR$/mission_control.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/r_scripts/colocalization.R" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/r_scripts/extract_intensity.R" beforeDir="false" afterPath="$PROJECT_DIR$/r_scripts/extract_intensity.R" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings/global_variables.py" beforeDir="false" afterPath="$PROJECT_DIR$/settings/global_variables.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/track/parameters.py" beforeDir="false" afterPath="$PROJECT_DIR$/track/parameters.py" afterDir="false" />
-    </list>
+    <list default="true" id="4761121b-3d84-4c50-bbe7-9d113065bea7" name="Default Changelist" comment="Completed with image summary and grand tables pending" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -151,7 +141,21 @@
       <option name="project" value="LOCAL" />
       <updated>1623674976499</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Completed with image summary and grand tables pending">
+      <created>1624282121678</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1624282121680</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Completed with image summary and grand tables pending">
+      <created>1624282130271</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1624282130271</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -172,7 +176,8 @@
     <MESSAGE value="Standardizing scripts (making them more uniform)" />
     <MESSAGE value="Done up to segmentation" />
     <MESSAGE value="Ligand incorported" />
-    <option name="LAST_COMMIT_MESSAGE" value="Ligand incorported" />
+    <MESSAGE value="Completed with image summary and grand tables pending" />
+    <option name="LAST_COMMIT_MESSAGE" value="Completed with image summary and grand tables pending" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
