@@ -3,6 +3,7 @@ import pandas as pd
 # To prevent truncating paths
 pd.options.display.max_colwidth = 10000
 
+
 # Temporary files path
 def processing_paths(directories_table):
     try:
@@ -22,6 +23,12 @@ def processing_paths(directories_table):
         # Create if it doesn't exist
         if not os.path.exists(processing_path):
             os.makedirs(processing_path)
+
+        # Ligand path
+        ligand_path = os.path.join(processing_path, "00_Ligand")
+        # Create if it doesn't exist
+        if not os.path.exists(ligand_path):
+            os.makedirs(ligand_path)
 
         # From proprietary file to TIFF output path
         to_tiff_path = os.path.join(processing_path, "01_Convert_to_TIFF")
@@ -66,7 +73,7 @@ def processing_paths(directories_table):
         imagej = directory_list.loc[directory_list['contains'] == 'ImageJ']['path']
         imagej = imagej.to_string(index=False)
 
-        return input_path, to_tiff_path, background_remove_path, segmentation_path, tracking_path, \
+        return input_path, ligand_path, to_tiff_path, background_remove_path, segmentation_path, tracking_path, \
                output_path, dark_frames_path, flat_fields_path, imagej
     except:
         # Get file path
@@ -119,9 +126,6 @@ def flat_field_parameters(flat_fields_table, flat_fields_path):
     try:
         # Import data frame list
         flat_fields_list = pd.read_csv(flat_fields_table)
-        # Make paths from dark-frame images
-        n_ff_images = range(0, len(flat_fields_list))
-        n_ff_images = list(n_ff_images)
 
         # Combine directory with image name
         flat_fields_list = flat_fields_list.assign(
@@ -146,8 +150,12 @@ def flat_field_parameters(flat_fields_table, flat_fields_path):
             writer.writerow(['image', 'channel', 'power', 'exposure'])
             writer.writerow(['yyyymmdd img_name', 'channel', 'pct', 'ms'])
 
+# For pairing images by dates
+def nearest_date(array, value):
+    return min(array, key=lambda x: abs(x - value))
+
 # Import images list
-def image_parameters(images_table):
+def image_parameters(images_table, ligands_table, output_path):
     try:
         # Path
         images_list = pd.read_csv(images_table)
@@ -171,6 +179,70 @@ def image_parameters(images_table):
             )
         except:
             print('Incorrect date')
+
+        try:
+            ligands_list = pd.read_csv(ligands_table)
+            ligands_list = ligands_list.assign(
+                image=lambda dataframe: dataframe['image'].map(lambda image: os.path.splitext(image)[0]),
+                date=lambda dataframe: dataframe['image'].map(lambda image: image[:8])
+            )
+        except:
+            print('Error')
+        try:
+            # Standardize date
+            ligands_list = ligands_list.assign(
+                date=lambda dataframe: dataframe['date'].map(
+                    lambda date: datetime.datetime.strptime(date, '%Y%m%d'))
+            )
+        except:
+            print('Incorrect date')
+
+        try:
+            ligand_densities = []
+            for image_x in n_images:
+                # Get image parameters
+                img_date = images_list['date'][image_x]
+                img_ligand = images_list['ligand'][image_x]
+                # Pair image and ligand
+                if pd.notna(img_ligand):
+                    # Pair image and ligand
+                    filtered_ligands_list = ligands_list['ligand'] == img_ligand
+                    filtered_ligands_list = ligands_list[filtered_ligands_list]
+                    # Reset index
+                    filtered_ligands_list = filtered_ligands_list.reset_index()
+                    filtered_ligands_list = filtered_ligands_list.drop(columns=['index'])
+                    # find nearest date
+                    select_date = nearest_date(filtered_ligands_list['date'], img_date)
+                    select_date = filtered_ligands_list['date'] == select_date
+                    filtered_ligands_list = filtered_ligands_list[select_date]
+                    # Reset index
+                    filtered_ligands_list = filtered_ligands_list.reset_index()
+                    filtered_ligands_list = filtered_ligands_list.drop(columns=['index'])
+                    ligand_img = filtered_ligands_list['image'][0]
+                    # Get ligand density
+                    ligand_density = os.path.join(output_path, 'Ligand', ligand_img, 'ligand_density.csv')
+                    if os.path.exists(ligand_density):
+                        try:
+                            ligand_density = pd.read_csv(ligand_density)
+                            ligand_density = ligand_density['LIGAND_DENSITY'][0]
+                            ligand_densities.append(ligand_density)
+                        except Exception:
+                            print('Ligand analysis table error')
+                            ligand_density = 0
+                            ligand_densities.append(ligand_density)
+                            pass
+                    else:
+                        ligand_density = 0
+                        ligand_densities.append(ligand_density)
+                else:
+                    ligand_density = 0
+                    ligand_densities.append(ligand_density)
+            # Add data
+            images_list['ligand_density'] = ligand_densities
+        except Exception:
+            print('Could not add ligand density data')
+            pass
+
         return images_list, n_images
     except:
         # Get file path

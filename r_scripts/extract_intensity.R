@@ -1,6 +1,16 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
 
+parameters_path = args[1]
+new_image_ending = args[2]
+results_table_name = args[3]
+# 
+# # CLEAN ENVIRONMENT----
+# remove(list = ls())
+# gc(reset = TRUE)
+# pacman::p_unload(pacman::p_loaded(), character.only = TRUE)
+
+
 # parameters_path = "/Users/u_deliz/Desktop/NewPipeline/Input/parameter_tables/"
 # new_image_ending = "_intensity_ref.tif"
 # results_table_name = "_intensity.csv.gz"
@@ -10,13 +20,6 @@ library(parallel)
 library(tidyr)
 library(data.table)
 library(ff)
-
-
-#!/usr/bin/env Rscript
-args = commandArgs(trailingOnly=TRUE)
-parameters_path = args[1]
-new_image_ending = args[2]
-results_table_name = args[3]
 
 # Get directories
 directories_list = file.path(parameters_path, "directories.csv")
@@ -371,9 +374,7 @@ XMLtoTableFx <- function(FileX){
           
           return(Result)
         }
-        tictoc::tic()
         Intensities <- lapply(1:NROW(FrameShortFullTable), SubPixelLocalization)
-        tictoc::toc()
         Intensities <- data.table::rbindlist(Intensities)
         return(Intensities)
       }, error = function(e){print(paste("     ERROR with FrameFx"))})

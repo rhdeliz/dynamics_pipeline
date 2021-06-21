@@ -33,13 +33,15 @@ if not os.path.exists(directories_table):
         writer.writerow(['flat_fields', 'path'])
         writer.writerow(['ImageJ', 'path'])
 # Directories
-input_path, to_tiff_path, background_remove_path, segmentation_path, tracking_path, \
+input_path, ligand_path, to_tiff_path, background_remove_path, segmentation_path, tracking_path, \
 output_path, dark_frames_path, flat_fields_path, imagej = variables.processing_paths(directories_table)
 
 
 # Run ligand
 import ligand.parameters
 import ligand.operations
+from subprocess import call
+# Get ligand parameters
 ligand_list = ligand.parameters.get_ligand_images(parameter_tables)
 
 # Get number of images to separate
@@ -79,42 +81,11 @@ for image_x in n_ligand_images:
     # Run
     ligand.operations.trackmate(imagej, protein_path, image_path, trackmate_threshold, trackmate_frame_gap, trackmate_max_link_distance,
               trackmate_gap_link_distance, puncta_diameter)
-
-for image_x in n_ligand_images:
-    # Get parameters
-    image_x_path= ligand_list['img_input_path'][image_x]
-    tiff_path= ligand_list['tiff_path'][image_x]
-    img_processing_path = ligand_list['img_processing_path'][image_x]
-    if os.path.exists(image_x_path):
-        # Run if nd2
-        if os.path.splitext(os.path.basename(image_x_path))[1] == '.nd2':
-            result_id = ligand.operations.make_tiff.remote(image_x_path, img_processing_path, tiff_path)
-            result_ids.append(result_id)
-        else:
-            print('File is not ND2: ' + image_x_path)
-    else:
-        print('ND2 does not exist: ' + image_x_path)
-results = settings.parallel.ids_to_vals(result_ids)
-print(results)
-ray.shutdown()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Get R script path
+R_script_path = os.path.dirname(os.path.realpath(__file__))
+R_script_path = os.path.join(R_script_path, 'ligand', 'get_density.R')
+# Execute
+call(['Rscript', '--vanilla', R_script_path, parameter_tables, ligand_path, output_path])
 
 
 
@@ -148,6 +119,7 @@ flat_fields_list = variables.flat_field_parameters(flat_fields_table, flat_field
 # 'channel protein_name', 'channel trackmate_threshold', 'channel trackmate frame gap' (frames)
 # Add columns as necessary
 images_table = os.path.join(parameter_tables, 'images.csv')
+ligands_table = os.path.join(parameter_tables, 'ligand.csv')
 if not os.path.exists(images_table):
     print('Need to create images.csv. Sample will be inside ' + parameter_tables)
     sample_images_table = os.path.join(parameter_tables, 'sample images.csv')
@@ -159,7 +131,7 @@ if not os.path.exists(images_table):
             ['yyyymmdd img_name', 'cell_line drug parameters', 'protein_name', 'x nM search_terms', 'px',
              'protein_name', 'signal_noise_theshold', 's'])
 # Get images info and add date
-images_list, n_images = variables.image_parameters(images_table)
+images_list, n_images = variables.image_parameters(images_table, ligands_table, output_path)
 # Get constants
 constants_table = os.path.join(parameter_tables, 'constants.csv')
 if not os.path.exists(constants_table):
@@ -349,7 +321,7 @@ for protein_image_x in n_segmentation_images:
 import track.parameters
 import track.operations
 # Get images list
-all_channels_metadata = track.parameters.tracking_list(images_list, segmentation_path, input_path)
+all_channels_metadata = track.parameters.tracking_list(images_list, segmentation_path, input_path, cell_diameter, puncta_diameter)
 file_ending = '_tracking_ref.tif'
 n_trackings, protein_paths, image_paths, trackmate_thresholds, trackmate_frame_gaps, trackmate_max_link_distances, trackmate_gap_link_distances\
     = track.parameters.tracking_parameters(all_channels_metadata, file_ending, segmentation_path)
@@ -392,19 +364,24 @@ from subprocess import call
 new_image_ending = "_intensity_ref.tif"
 results_table_name = "_intensity.csv.gz"
 # Get R script path
-R_script_path = os.path.dirname(os.path.realpath(__file__))
+R_script_path = os.peth.dirname(os.path.realpath(__file__))
 R_script_path = os.path.join(R_script_path, 'r_scripts', 'extract_intensity.R')
 # Execute
 call(['Rscript', '--vanilla', R_script_path, parameter_tables, new_image_ending, results_table_name])
 
-# Calibrate images and calculate simple parameters (lifetime, max intensity, starting intensity, changepoint)
+# Colocalize intensities
 # Parameters
 new_image_ending = "_intensity_ref.tif"
 results_table_name = "_intensity.csv.gz"
 # Get R script path
 R_script_path = os.path.dirname(os.path.realpath(__file__))
-R_script_path = os.path.join(R_script_path, 'r_scripts', 'extract_intensity.R')
+R_script_path = os.path.join(R_script_path, 'r_scripts', 'colocalization_intensity-based.R')
+# Execute
+call(['Rscript', '--vanilla', R_script_path, parameter_tables, new_image_ending, results_table_name])
+# Get R script path
+R_script_path = os.path.dirname(os.path.realpath(__file__))
+R_script_path = os.path.join(R_script_path, 'r_scripts', 'colocalization_coordinate-based.R')
 # Execute
 call(['Rscript', '--vanilla', R_script_path, parameter_tables, new_image_ending, results_table_name])
 
-
+# Calibrate images and calculate simple parameters (lifetime, max intensity, starting intensity, changepoint)

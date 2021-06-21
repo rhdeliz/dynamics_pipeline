@@ -28,6 +28,8 @@ puncta_radius = puncta_diameter/2
 // Open image
 open(image_path);
 
+// Switch z with t
+run("Re-order Hyperstack ...", "channels=[Channels (c)] slices=[Frames (t)] frames=[Slices (z)]");
 
 //Run trackmate
 run('TrackMate', "use_gui=false "

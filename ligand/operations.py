@@ -10,6 +10,14 @@ import cv2 as cv
 from scipy import ndimage
 from subprocess import call
 
+def flatten_dictionary(dd, separator='_', prefix=''):
+    return {prefix + separator + k if prefix else k: v
+            for kk, vv in dd.items()
+            for k, v in flatten_dictionary(vv, separator, kk).items()
+            } if isinstance(dd, dict) else {prefix: dd}
+
+def nearest_date(array, value):
+    return min(array, key=lambda x: abs(x - value))
 
 @ray.remote
 def make_tiff(image_x_path, img_processing_path, tiff_path, ligand_puncta_radius):
@@ -27,6 +35,23 @@ def make_tiff(image_x_path, img_processing_path, tiff_path, ligand_puncta_radius
             os.makedirs(save_path)
     except:
         print('Cannot create image path')
+
+    try:
+        # Save metadata to text file
+        file = os.path.join(save_path, 'metadata.txt')
+        file = open(file, 'w')
+        file.write(img.metadata_text)
+        file.close()
+
+        # Save metadata to csv
+        img_metadata = flatten_dictionary(img.metadata)
+        with open(os.path.join(save_path, 'metadata.csv'), 'w') as f:
+            f.write('parameter,value,value2,value3\n')
+            for key in img_metadata.keys():
+                f.write('%s,%s\n' % (key, img_metadata[key]))
+
+    except:
+        print('Metadata error')
 
     try:
         # Get frame count

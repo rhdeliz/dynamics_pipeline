@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 
-def tracking_list(images_list, segmentation_path, input_path):
+def tracking_list(images_list, segmentation_path, input_path, cell_diameter, puncta_diameter):
     n_images = range(0, len(images_list))
     all_channels_metadata = []
     for image_x in n_images:
@@ -14,6 +14,7 @@ def tracking_list(images_list, segmentation_path, input_path):
 
         # Get image parameters
         ligand = images_list['ligand'][image_x]
+        ligand_density = images_list['ligand_density'][image_x]
         trackmate_max_link_distance = images_list['trackmate_max_link_distance'][image_x]
 
         # Get tables to merge
@@ -93,6 +94,7 @@ def tracking_list(images_list, segmentation_path, input_path):
                 select_channel_metadata['position_x'] = position_x_list
                 select_channel_metadata['position_y'] = position_y_list
                 select_channel_metadata['ligand'] = ligand
+                select_channel_metadata['ligand_density'] = ligand_density
                 select_channel_metadata['cohort'] = cohort_name
                 select_channel_metadata['trackmate_max_link_distance'] = trackmate_max_link_distance
                 select_channel_metadata['width'] = width
@@ -101,6 +103,10 @@ def tracking_list(images_list, segmentation_path, input_path):
                 select_channel_metadata['time_start'] = time_start
                 select_channel_metadata['objective'] = objective
                 select_channel_metadata['frame_rate'] = frame_rate
+                select_channel_metadata['puncta_diameter'] = puncta_diameter
+                select_channel_metadata['cell_diameter'] = cell_diameter
+                select_channel_metadata['segment_with'] = images_list['segment_with'][image_x]
+
 
                 all_channels_metadata.append(select_channel_metadata)
                 image_channels_metadata.append(select_channel_metadata)
