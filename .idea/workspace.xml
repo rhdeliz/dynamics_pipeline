@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4761121b-3d84-4c50-bbe7-9d113065bea7" name="Default Changelist" comment="Completed with image summary and grand tables pending" />
+    <list default="true" id="4761121b-3d84-4c50-bbe7-9d113065bea7" name="Default Changelist" comment="Parameter tables">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mission_control.py" beforeDir="false" afterPath="$PROJECT_DIR$/mission_control.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/parameter_tables/sample images.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/r_scripts/colocalization_coordinate-based.R" beforeDir="false" afterPath="$PROJECT_DIR$/r_scripts/colocalization_coordinate-based.R" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/r_scripts/compile_tables.R" beforeDir="false" afterPath="$PROJECT_DIR$/r_scripts/compile_tables.R" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExportToHTMLSettings">
+    <option name="OUTPUT_DIRECTORY" value="$PROJECT_DIR$/exportToHTML" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -155,7 +164,14 @@
       <option name="project" value="LOCAL" />
       <updated>1624282130271</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Parameter tables">
+      <created>1624282285024</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1624282285024</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -177,7 +193,8 @@
     <MESSAGE value="Done up to segmentation" />
     <MESSAGE value="Ligand incorported" />
     <MESSAGE value="Completed with image summary and grand tables pending" />
-    <option name="LAST_COMMIT_MESSAGE" value="Completed with image summary and grand tables pending" />
+    <MESSAGE value="Parameter tables" />
+    <option name="LAST_COMMIT_MESSAGE" value="Parameter tables" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

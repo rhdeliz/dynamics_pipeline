@@ -1,3 +1,5 @@
+# Install required packages with: pip install -r requirements.txt
+
 import ray
 import settings.parallel
 import settings.global_variables as variables

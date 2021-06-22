@@ -9,8 +9,8 @@ results_table_name = args[3]
 # remove(list = ls())
 # gc(reset = TRUE)
 # pacman::p_unload(pacman::p_loaded(), character.only = TRUE)
+#
 # 
-
 # parameters_path = "/Users/u_deliz/Desktop/NewPipeline/Input/parameter_tables/"
 # new_image_ending = "_intensity_ref.tif"
 # results_table_name = "_intensity.csv.gz"
@@ -175,7 +175,7 @@ CostFx <- function(FrameTable){
               Result$QUERY_SPOT <- QueryProtein$UNIVERSAL_SPOT_ID[QuerySpotName]
               Result$QUERY_TRACK <- QueryProtein$UNIVERSAL_TRACK_ID[QuerySpotName]
               
-              Result$DISTANCE <- Distance$nn.dists[DistanceX]
+              Result$COLOCALIZATION_DISTANCE <- Distance$nn.dists[DistanceX]
               Result$ASSOCIATION_TIME_THRESHOLD <- AssocTime
               # Result$UNIVERSAL_SPOT_ID <- c(QueryProtein$UNIVERSAL_SPOT_ID[QuerySpotName], ReferenceProtein$UNIVERSAL_SPOT_ID[DistanceX])
               # Result$COLOCALIZATION_SPOT <- c(ReferenceProtein$UNIVERSAL_SPOT_ID[DistanceX], QueryProtein$UNIVERSAL_SPOT_ID[QuerySpotName])

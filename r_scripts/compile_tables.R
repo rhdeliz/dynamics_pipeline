@@ -4,11 +4,11 @@ args = commandArgs(trailingOnly=TRUE)
 parameters_path = args[1]
 
 # CLEAN ENVIRONMENT----
-remove(list = ls())
-gc(reset = TRUE)
-pacman::p_unload(pacman::p_loaded(), character.only = TRUE)
-
-parameters_path = "/Users/u_deliz/Desktop/NewPipeline/Input/parameter_tables/"
+# remove(list = ls())
+# gc(reset = TRUE)
+# pacman::p_unload(pacman::p_loaded(), character.only = TRUE)
+# 
+# parameters_path = "/Users/u_deliz/Desktop/NewPipeline/Input/parameter_tables/"
 
 # Ending of files
 intensity_ending = "_intensity.csv.gz"
@@ -53,7 +53,7 @@ image_list = file_list[file_list$cohort!="Calibrations",]
 GetCalibrationImages <- function(ImageX){
   tryCatch({
     # Get calibration date
-    c = image_list$date[ImageX]
+    IMAGE_DATE = image_list$date[ImageX]
     CALIBRATION_DATES = calibration_list$date
     DATE_DIFFERENCE = abs(CALIBRATION_DATES - IMAGE_DATE)
     CALIBRATION_DATE = CALIBRATION_DATES[which.min(DATE_DIFFERENCE)]
@@ -113,7 +113,7 @@ GetCalibrationImages <- function(ImageX){
   }, error = function(e){print(paste("ERROR with MoveNoColocalizationNeededFx ImageX =", ImageX))})
 }
 PairedList <- mclapply(1:NROW(image_list), GetCalibrationImages)
-PairedList <- rbindlist(PairedList)
+PairedList <- rbindlist(PairedList, fill = TRUE)
 PairedList <- PairedList %>% distinct()
 
 CalibrationImages <-
@@ -153,13 +153,18 @@ GetCalibrationIntensity <- function(ImageX){
 }
 CalibrationIntensities <- mclapply(1:NROW(CalibrationImages), GetCalibrationIntensity)
 CalibrationIntensities <- CalibrationIntensities[(which(sapply(CalibrationIntensities,is.list), arr.ind=TRUE))]
-CalibrationIntensities <- rbindlist(CalibrationIntensities)
+CalibrationIntensities <- rbindlist(CalibrationIntensities, fill = TRUE)
 # Pair image and calibration
 PairedCalibrations <- merge(PairedList, CalibrationIntensities, by = "CALIBRATION_IMAGE", all = TRUE)
 names(PairedCalibrations) <- toupper(names(PairedCalibrations))
 PairedCalibrations <-
   PairedCalibrations %>%
-  mutate(CELL_PATH = dirname(PROTEIN_RELATIVE_PATH)) %>% distinct()
+  mutate(
+    CELL_PATH = dirname(PROTEIN_RELATIVE_PATH),
+    CALIBRATION_TOTAL_INTENSITY = ifelse(is.na(CALIBRATION_TOTAL_INTENSITY), 1, CALIBRATION_TOTAL_INTENSITY),
+    FLUOROPHORE = ifelse(is.na(FLUOROPHORE), CHANNEL, FLUOROPHORE)
+  ) %>%
+  distinct()
 
 CombineCellTables <- function(CellX){
   tryCatch({
@@ -201,7 +206,7 @@ CombineCellTables <- function(CellX){
     if(NROW(IntensityTables)>0){
       
       IntensityTables <- lapply(IntensityTables, fread)
-      IntensityTables <- rbindlist(IntensityTables)
+      IntensityTables <- rbindlist(IntensityTables, fill = TRUE)
       # Pair calibration
       IntensityTables <- merge(IntensityTables, CellPairedCalibrations, by = "PROTEIN", all = TRUE)
       
@@ -210,7 +215,38 @@ CombineCellTables <- function(CellX){
       ColocalizationIntensityTables <- ColocalizationIntensityTables[file.exists(ColocalizationIntensityTables)]
       ColocalizationIntensityTables <- if(NROW(ColocalizationIntensityTables)>0){
         ColocalizationIntensityTables <- lapply(ColocalizationIntensityTables, fread)
-        ColocalizationIntensityTables <- rbindlist(ColocalizationIntensityTables)
+        ColocalizationIntensityTables <- rbindlist(ColocalizationIntensityTables, fill = TRUE)
+        
+        # Normalize colocalization intensity
+        ComplementaryProteins <- names(ColocalizationIntensityTables)
+        ComplementaryProteinsIndex <- substr(ComplementaryProteins, 0, nchar("COMPLEMENTARY_PROTEIN_"))
+        ComplementaryProteinsIndex <- which(ComplementaryProteinsIndex == "COMPLEMENTARY_PROTEIN_")
+        ComplementaryProteins <- ComplementaryProteins[ComplementaryProteinsIndex]
+        ComplementaryProteins <- grep("COMPLEMENTARY_PROTEIN_", ComplementaryProteins)
+        
+        ColocalizationIntensityNormalization <- function(ProteinX){
+          tryCatch({
+            # Get protein name
+            ProteinColumnName <- paste0("COMPLEMENTARY_PROTEIN_", ProteinX)
+            ProteinName = which(names(ColocalizationIntensityTables) == ProteinColumnName)
+            ProteinName <- ColocalizationIntensityTables[, ..ProteinName]
+            # Get calibration intensity
+            ProteinCalibration <- merge(ProteinName, CellPairedCalibrations, by.x = ProteinColumnName, by.y = "PROTEIN")
+            
+            # Get intensity
+            IntensityColumnName <- paste0("COMPLEMENTARY_TOTAL_INTENSITY_", ProteinX)
+            ProteinIntensity = which(names(ColocalizationIntensityTables) == IntensityColumnName)
+            ProteinIntensity <- ColocalizationIntensityTables[, ..ProteinIntensity]
+            ProteinIntensity <- ProteinIntensity/ProteinCalibration$CALIBRATION_TOTAL_INTENSITY
+            names(ProteinIntensity) <- paste0("COMPLEMENTARY_NORMALIZED_INTENSITY_", ProteinX)
+            return(ProteinIntensity)
+          }, error = function(e){print(paste("ERROR with ColocalizationIntensityNormalization ProteinX =", ProteinX))})
+        }
+        ColocalizationNormalizedIntensities <- lapply(ComplementaryProteins, ColocalizationIntensityNormalization)
+        ColocalizationNormalizedIntensities <- ColocalizationNormalizedIntensities[(which(sapply(ColocalizationNormalizedIntensities,is.list), arr.ind=TRUE))]
+        ColocalizationNormalizedIntensities <- rbindlist(ColocalizationNormalizedIntensities, fill = TRUE)
+        ColocalizationIntensityTables <- cbind(ColocalizationIntensityTables, ColocalizationNormalizedIntensities)
+          
         IntensityTables <- merge(IntensityTables, ColocalizationIntensityTables, by = "UNIVERSAL_SPOT_ID", all = TRUE)
       }
       
@@ -229,9 +265,67 @@ CombineCellTables <- function(CellX){
       ChangepointTables <- ChangepointTables[file.exists(ChangepointTables)]
       ChangepointTables <- if(NROW(ChangepointTables)>0){
         ChangepointTables <- lapply(ChangepointTables, fread)
-        ChangepointTables <- rbindlist(ChangepointTables)
+        ChangepointTables <- ChangepointTables[(which(sapply(ChangepointTables,is.list), arr.ind=TRUE))]
+        ChangepointTables <- rbindlist(ChangepointTables, fill = TRUE)
         IntensityTables <- merge(IntensityTables, ChangepointTables, by = "UNIVERSAL_SPOT_ID", all = TRUE)
       }
+      
+      # Determine nearest neighbor to spot of the same protein
+      NearestNeighborTable <-
+        IntensityTables %>% 
+        group_by(
+          PROTEIN,
+          FRAME
+        ) %>% 
+        mutate(
+          N = n()
+        ) %>% 
+        filter(
+          N > 1
+        ) %>% 
+        select(
+          PROTEIN,
+          FRAME,
+          PUNCTA_DIAMETER,
+          UNIVERSAL_SPOT_ID,
+          POSITION_X,
+          POSITION_Y
+        ) %>% 
+        ungroup() %>% 
+        group_split(
+          PROTEIN,
+          FRAME
+        )
+      # Nearest neighbor
+      RADIUS <- max(IntensityTables$PUNCTA_DIAMETER, na.rm = T) * 3
+      NearestNeighborSearch <- function(ProteinFrameX){
+        # Get nearest spot
+        CoordiantesTable <- ProteinFrameX %>% select(POSITION_X, POSITION_Y)
+        DistanceTable <- RANN::nn2(CoordiantesTable, k = 2)
+        DistanceTable <- DistanceTable$nn.dists[,2]
+        # Get number of spots nearby
+        ClusterTable <- RANN::nn2(CoordiantesTable, searchtype = c("radius"), radius = RADIUS, k = NROW(ProteinFrameX))
+        ClusterTable <- ClusterTable$nn.dists
+        ClusterTable <- ClusterTable > 0 & ClusterTable <  1e+153 
+        ClusterTable <- rowSums(ClusterTable)
+        # Put results together
+        DistanceResults <- ProteinFrameX %>% select(UNIVERSAL_SPOT_ID)
+        DistanceResults$NEAREST_SPOT <- DistanceTable
+        DistanceResults$SPOTS_WITHIN_RADIUS = ClusterTable
+        DistanceResults$SPOT_RADIUS_LIMIT = RADIUS
+        return(DistanceResults)
+      }
+      NeighborResults <- lapply(NearestNeighborTable, NearestNeighborSearch)
+      NeighborResults <- NeighborResults[(which(sapply(NeighborResults,is.list), arr.ind=TRUE))]
+      NeighborResults <- rbindlist(NeighborResults, fill = TRUE)
+      IntensityTables <- merge(IntensityTables, NeighborResults, by = "UNIVERSAL_SPOT_ID", all = TRUE)
+      # Add missing values
+      MissingIndex <- which(is.na(IntensityTables$NEAREST_SPOT))
+      IntensityTables$NEAREST_SPOT[MissingIndex] <- Inf
+      MissingIndex <- which(is.na(IntensityTables$SPOTS_WITHIN_RADIUS))
+      IntensityTables$SPOTS_WITHIN_RADIUS[MissingIndex] <- 0
+      MissingIndex <- which(is.na(IntensityTables$SPOT_RADIUS_LIMIT))
+      IntensityTables$SPOT_RADIUS_LIMIT[MissingIndex] <- RADIUS
       
       # Get landing frame
       LANDING_FRAME = min(IntensityTables$FRAME)
@@ -304,7 +398,6 @@ CombineCellTables <- function(CellX){
           STARTING_NORMALIZED_INTENSITY = NORMALIZED_INTENSITY[1],
           # Ending intensity
           ENDING_NORMALIZED_INTENSITY = NORMALIZED_INTENSITY[n()],
-          # ENDING_NORMALIZED_INTENSITY = sum(case_when(TIME == LIFETIME - 1 ~ NORMALIZED_INTENSITY), na.rm = T),
           # Overall change in intensity from start to max
           START_TO_MAX_INTENSITY = MAX_NORMALIZED_INTENSITY - STARTING_NORMALIZED_INTENSITY,
           # For pointing out which frame contains the max intensity
@@ -324,35 +417,90 @@ Cells <- unique(PairedCalibrations$CELL_PATH)
 CellAnalysis <- mclapply(1:NROW(Cells), CombineCellTables)
 CellAnalysis <- unlist(CellAnalysis)
 CellAnalysis <- CellAnalysis[file.exists(CellAnalysis)]
-
-# Combine all cell tables
-CombineImageTables <- function(ImageX){
-  # Get cell table paths
-  CellsList <- CellAnalysis[dirname(dirname(CellAnalysis)) == Images[ImageX]]
-  # Get cell tables
-  CellsList <- lapply(CellsList, fread)
-  CellsList <- rbindlist(CellsList, fill = TRUE)
-  # Save combined tables
-  DestinationPath <- file.path(Images[ImageX], "Analysis.csv.gz")
-  fwrite(CellsList, DestinationPath, row.names = F, na = "")
-  
-  # Make image summary for future analysis
-  ImageSummary <-
-    CellsList %>% 
-    ungroup() %>% 
-    summarize(
-      IMAGE = IMAGE[1],
-      IMAGE_DATE = IMAGE_DATE[1],
-      LIGAND_DENSITY = LIGAND_DENSITY[1]
-      # PROTEINS = X,
-      # 
-    )
-    
-  return(ImageSummary)
-}
-Images <- dirname(dirname(CellAnalysis))
-Images <- unique(Images)
-Images <- lapply(1:NROW(Images), CombineImageTables)
-
-# Make table of analyzed images of a date
+# 
+# # Combine all cell tables
+# Images <- dirname(dirname(CellAnalysis))
+# Images <- unique(Images)
+# CombineImageTables <- function(ImageX){
+#   tryCatch({
+#     # Get cell table paths
+#     CellsList <- CellAnalysis[dirname(dirname(CellAnalysis)) == Images[ImageX]]
+#     # Get cell tables
+#     CellsList <- lapply(CellsList, fread)
+#     CellsList <- rbindlist(CellsList, fill = TRUE)
+#     # Save combined tables
+#     DestinationPath <- file.path(Images[ImageX], "Analysis.csv.gz")
+#     fwrite(CellsList, DestinationPath, row.names = F, na = "")
+#     
+#     # Make image summary for future analysis
+#     CellSummary <-
+#       CellsList %>% 
+#       group_by(
+#         LIGAND_DENSITY_CAT,
+#         COHORT,
+#         IMAGE,
+#         CELL,
+#         PROTEIN
+#       ) %>% 
+#       mutate(
+#         CELL_AREA = CELL_AREA*CALIBRATION_UM,
+#         FRAMES = max(TIME_SINCE_LANDING*FRAME_RATE),
+#       ) %>% 
+#       group_by(
+#         LIGAND_DENSITY_CAT,
+#         COHORT,
+#         IMAGE,
+#         CELL,
+#         PROTEIN,
+#         UNIVERSAL_TRACK_ID
+#       ) %>% 
+#       mutate(
+#         SPOTS = n()
+#       ) %>% 
+#       filter(
+#         FRAMES_ADJUSTED == 0
+#       ) %>% 
+#       group_by(
+#         LIGAND_DENSITY_CAT,
+#         COHORT,
+#         IMAGE,
+#         CELL,
+#         PROTEIN,
+#         CELL_AREA
+#       ) %>% 
+#       summarize(
+#         SPOTS = n(),
+#         # SPOTS_PER_FRAME = SPOTS/FRAMES,
+#         # # SPOTS_PER_AREA_PER_FRAME = SPOTS_PER_FRAME/CELL_AREA,
+#         LIFETIME = mean(LIFETIME, na.rm = T),
+#         STARTING_NORMALIZED_INTENSITY = mean(STARTING_NORMALIZED_INTENSITY, na.rm = T),
+#         MAX_NORMALIZED_INTENSITY = mean(MAX_NORMALIZED_INTENSITY, na.rm = T),
+#         START_TO_MAX_INTENSITY = mean(START_TO_MAX_INTENSITY, na.rm = T)
+#       )
+#     
+#     ProteinSummary <-
+#       CellSummary %>% 
+#       group_by(
+#         LIGAND_DENSITY_CAT,
+#         COHORT,
+#         IMAGE,
+#         PROTEIN
+#       ) %>% 
+#       summarize(
+#         CELLS = n(),
+#         SPOTS = sum(SPOTS),
+#         SPOTS_PER_FRAME = mean(SPOTS_PER_FRAME),
+#         SPOTS_PER_AREA_PER_FRAME = mean(SPOTS_PER_AREA_PER_FRAME),
+#         LIFETIME = mean(LIFETIME, na.rm = T),
+#         STARTING_NORMALIZED_INTENSITY = mean(STARTING_NORMALIZED_INTENSITY, na.rm = T),
+#         MAX_NORMALIZED_INTENSITY = mean(MAX_NORMALIZED_INTENSITY, na.rm = T),
+#         START_TO_MAX_INTENSITY = mean(START_TO_MAX_INTENSITY, na.rm = T)
+#       )
+#     
+#     return(ImageSummary)
+#   }, error = function(e){print(paste("ERROR with CombineImageTables ImageX =", ImageX))})
+# }
+# Images <- lapply(1:NROW(Images), CombineImageTables)
+# 
+# # Make table of analyzed images of a date
 
